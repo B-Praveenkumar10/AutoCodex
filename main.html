@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Review Report Viewer</title>
+    <style>
+        .markdown-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+        }
+
+        .markdown-content {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Markdown styles */
+        .markdown-content h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .markdown-content h2,
+        .markdown-content h3 {
+            color: #34495e;
+            margin-top: 20px;
+        }
+
+        .markdown-content code {
+            background-color: #f7f7f7;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        .markdown-content pre {
+            background-color: #f7f7f7;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+
+        .markdown-content blockquote {
+            border-left: 4px solid #ddd;
+            padding-left: 15px;
+            color: #666;
+            margin: 15px 0;
+        }
+
+        .markdown-content a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        .markdown-content a:hover {
+            text-decoration: underline;
+        }
+
+        .markdown-content img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .error-message {
+            color: #e74c3c;
+            padding: 10px;
+            background-color: #fde8e8;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="markdown-container">
+        <div id="error" class="error-message"></div>
+        <div id="preview" class="markdown-content">Loading...</div>
+    </div>
+
+    <!-- Include marked.js for Markdown parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.2/marked.min.js"></script>
+
+    <script>
+        // Configure marked options for better security
+        marked.setOptions({
+            headerIds: false,
+            mangle: false,
+            breaks: true,
+            gfm: true,
+            sanitize: true
+        });
+
+        // Function to show error messages
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        // Function to load and render the markdown file
+        async function loadMarkdownFile() {
+            try {
+                const response = await fetch('code_review_report.md');
+                if (!response.ok) {
+                    throw new Error('Failed to load the markdown file');
+                }
+
+                const content = await response.text();
+                const htmlContent = marked.parse(content);
+                document.getElementById('preview').innerHTML = htmlContent;
+            } catch (error) {
+                showError('Error loading the markdown file. Make sure code_review_report.md exists in the same directory and you are running this through a web server.');
+                console.error('Error:', error);
+            }
+        }
+
+        // Load the markdown file when the page loads
+        document.addEventListener('DOMContentLoaded', loadMarkdownFile);
+    </script>
+</body>
+</html>
