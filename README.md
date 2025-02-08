@@ -28,7 +28,7 @@ The **Advanced Code Review Bot** is a Python-based tool designed to analyze code
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/yourusername/advanced-code-review-bot.git
+   git clone https://github.com/B-Praveenkumar10/AutoCodex.git
    cd advanced-code-review-bot
    ```
 
