@@ -90,4 +90,12 @@ The tool checks code against these guidelines:
 ##  Screenshots
 
 ![AutoCodex Workflow](./Screenshots/1.png)
+![AutoCodex Workflow](./Screenshots/2.png)
+![AutoCodex Workflow](./Screenshots/3.png)
+![AutoCodex Workflow](./Screenshots/4.png)
+![AutoCodex Workflow](./Screenshots/5.png)
+![AutoCodex Workflow](./Screenshots/6.png)
+![AutoCodex Workflow](./Screenshots/7.png)
+![AutoCodex Workflow](./Screenshots/8.png)
+![AutoCodex Workflow](./Screenshots/9.png)
 
