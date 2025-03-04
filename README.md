@@ -89,5 +89,5 @@ The tool checks code against these guidelines:
 
 ##  Screenshots
 
-![AutoCodex Workflow](./Screenshots/Screenshot 2025-03-04 221839.png)
+![AutoCodex Workflow](./Screenshots/1.png)
 
