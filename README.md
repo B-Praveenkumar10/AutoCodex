@@ -87,5 +87,7 @@ The tool checks code against these guidelines:
 - Maximum of 20 files can be analyzed per run to avoid API rate limits
 - Only analyzes Java files
 
-![Alt Text](./Screenshots/Screenshot 2025-03-04 221839.png)
+##  Screenshots
+
+![AutoCodex Workflow](./Screenshots/Screenshot 2025-03-04 221839.png)
 
