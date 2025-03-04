@@ -91,10 +91,6 @@ The tool checks code against these guidelines:
 
 MIT License
 
-## Contributors
-
-- docu3C team
-
 ## Disclaimer
 
 This tool provides automated suggestions and should not replace comprehensive code reviews by experienced developers.
