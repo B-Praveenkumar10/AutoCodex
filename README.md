@@ -87,10 +87,5 @@ The tool checks code against these guidelines:
 - Maximum of 20 files can be analyzed per run to avoid API rate limits
 - Only analyzes Java files
 
-## License
+![Alt Text](./Screenshots/Screenshot 2025-03-04 221839.png)
 
-MIT License
-
-## Disclaimer
-
-This tool provides automated suggestions and should not replace comprehensive code reviews by experienced developers.
