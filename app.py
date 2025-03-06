@@ -106,36 +106,57 @@ def get_file_content(repo_name, file_path, github_token):
     return decoded_content, None
 
 # Function to analyze code with Gemini
+# Replace the analyze_code_with_gemini function with this version
 def analyze_code_with_gemini(code, file_path, model):
     prompt = f"""
-You are a Java code review expert. Analyze the following Java code from file '{file_path}' against these guidelines:
+You are a Principal Java code review expert. Analyze the following Java code from file '{file_path}' against these Java guidelines:
 
-{JAVA_GUIDELINES}
+1. Follow Java code conventions
+2. Replace imperative code with lambdas and streams
+3. Beware of the NullPointerException
+4. Avoid directly assigning references from client code to a field
+5. Handle exceptions with care
+6. Ponder over the choice of data structures
+7. Think twice before you expose (use appropriate access modifiers)
+8. Code to interfaces
+9. Don't force fit interfaces
+10. Override hashCode when overriding equals
 
-For each guideline, provide:
-1. Whether the code follows or violates the guideline (use EXACTLY "followed", "violated", or "not applicable")
-2. Specific examples from the code
-3. Suggested modifications to fix violations
+Then analyze each guideline separately with this format:
 
-Return ONLY a valid, parseable JSON object with this structure:
-{{
-  "summary": "Brief overall assessment",
-  "guidelines_analysis": [
-    {{
-      "guideline_number": 1,
-      "guideline_description": "Follow Java code conventions",
-      "status": "followed" or "violated" or "not applicable",
-      "details": "Explanation with examples from code",
-      "modifications": "Suggested code changes if violated or null if followed"
-    }},
-    ...
-  ]
-}}
+## Guideline {{X}}: {{Guideline Description}}
 
-No preamble, explanation, or code blocks around the JSON. Ensure the JSON is valid and properly escaped.
+**Status: [FOLLOWED | VIOLATED | NOT APPLICABLE]**
 
-Here's the code to analyze:
+If the guideline is VIOLATED, for EACH violation provide:
 
+**Issues Identified**
+* **Line XX:** [Brief description of the issue]
+
+**Explanation**
+* [Detailed explanation mentioning the specific isseue of why this is a problem]
+* [Suggestions for improvement with rationale]
+
+**BEFORE**
+```java
+[Exact problematic code snippet only the mistaken code part]
+
+**AFTER**
+```java
+[Complete, executable corrected version of the code without any comments for the modified part alone]
+For the status:
+Use "Status: ✅ FOLLOWED" for followed guidelines
+Use "Status: ❌ VIOLATED" for violated guidelines
+Use "Status: ⚠️ NOT APPLICABLE" for not applicable guidelines
+Format your output nicely:
+
+Use markdown formatting for better readability
+Highlight important code elements in bold when discussing them
+For each guideline violation, provide clear, complete code replacements (not comments)
+Always show both the original and corrected code in the same code block with BEFORE/AFTER labels
+Make sure all code blocks are properly formatted with java syntax highlighting
+Ensure all suggested code is directly copyable (no incomplete snippets or comments about what to do)
+Give before and after code block separately
 {code}
 """
 
@@ -146,48 +167,40 @@ Here's the code to analyze:
         return f"Error generating analysis: {str(e)}"
 
 # Improved function to parse Gemini's response and extract the JSON
-def parse_gemini_response(response_text):
-    # Remove any markdown code block markers
-    cleaned_text = re.sub(r'```json|```', '', response_text).strip()
-    
-    # Try to parse the cleaned text directly first
+# Replace parse_gemini_response with this function
+def process_gemini_response(response_text):
+    """
+    Process the Markdown response from Gemini to ensure it can be displayed properly.
+    Returns the processed text or a formatted error message.
+    """
     try:
-        return json.loads(cleaned_text)
-    except json.JSONDecodeError:
-        # Look for a JSON object with more careful pattern matching
-        try:
-            # Find the opening brace of the JSON object
-            start_idx = cleaned_text.find('{')
-            if start_idx == -1:
-                raise ValueError("No JSON object found")
-                
-            # Track nested braces to find the matching closing brace
-            brace_count = 0
-            for i in range(start_idx, len(cleaned_text)):
-                if cleaned_text[i] == '{':
-                    brace_count += 1
-                elif cleaned_text[i] == '}':
-                    brace_count -= 1
-                    if brace_count == 0:
-                        # Found the matching closing brace
-                        json_str = cleaned_text[start_idx:i+1]
-                        return json.loads(json_str)
+        # Remove any extra backticks that might be at the very beginning or end
+        # This helps clean up any wrapper code blocks that might interfere with display
+        cleaned_text = response_text.strip()
+        
+        # Check if the response is empty or contains an error
+        if not cleaned_text or cleaned_text.lower().startswith("error"):
+            return f"""
+## Analysis Error
+An error occurred during the code analysis.
+
+**Error details:** {cleaned_text if cleaned_text else "Empty response from AI"}
+"""
             
-            raise ValueError("No complete JSON object found")
-        except Exception:
-            # If extraction fails, return structured error data
-            return {
-                "summary": "Error parsing AI response",
-                "guidelines_analysis": [
-                    {
-                        "guideline_number": i,
-                        "guideline_description": f"Guideline {i}",
-                        "status": "unknown",
-                        "details": "Failed to parse AI analysis",
-                        "modifications": None
-                    } for i in range(1, 11)
-                ]
-            }
+        # Return the cleaned Markdown text for direct display
+        return cleaned_text
+        
+    except Exception as e:
+        # If any processing fails, return a formatted error message
+        error_message = f"""
+## Analysis Error
+Failed to process the analysis results.
+
+**Error details:** {str(e)}
+
+Please try again or contact support if the problem persists.
+"""
+        return error_message
 
 # CSS for styling
 def load_css():
@@ -468,19 +481,19 @@ def main():
             for idx, file in enumerate(java_files):
                 progress_text.text(f"Analyzing file {idx+1}/{len(java_files)}: {file['path']}")
                 update_file_progress(file_progress_placeholders[idx], 30, "in_progress")
-
+                
                 content, error = get_file_content(repo_name, file['path'], github_token)
                 analysis_success = False
                 
                 if not error:
                     try:
                         analysis_response = analyze_code_with_gemini(content, file['path'], gemini_model)
-                        analysis_data = parse_gemini_response(analysis_response)
-            
-                        if analysis_data:
+                        
+                        if analysis_response and not analysis_response.startswith("Error"):
+                            # Store raw markdown response instead of parsed JSON
                             results.append({
                                 "file_path": file['path'],
-                                "analysis": analysis_data
+                                "analysis_text": analysis_response
                             })
                             analysis_success = True
                         else:
@@ -490,12 +503,12 @@ def main():
                 else:
                     st.error(error)
                 
-                # Update progress indicator only once with final status
+                # Update progress indicator
                 update_file_progress(file_progress_placeholders[idx], 100, "success" if analysis_success else "error")
-    
+                
                 # Add a small delay to avoid rate limiting
                 time.sleep(0.5)
-    
+                
                 # Update progress
                 progress_bar.progress((idx + 1) / len(java_files))
 
@@ -512,68 +525,16 @@ def main():
             # Clear progress indicators
             progress_text.empty()
             progress_bar.empty()
-    
+       
     # Display analysis results
     if st.session_state.analysis_results:
         st.markdown("<h2 class='sub-header'>Analysis Results</h2>", unsafe_allow_html=True)
         
-        # Overall summary
-        overall_violations = 0
-        total_checks = 0
+        # Simplified summary stats - just count files
         file_count = len(st.session_state.analysis_results)
-        guideline_stats = {i: {"followed": 0, "violated": 0, "unknown": 0, "mostly followed": 0} for i in range(1, 11)}
         
-        for file_result in st.session_state.analysis_results:
-            for guideline in file_result['analysis'].get('guidelines_analysis', []):
-                guideline_num = guideline.get('guideline_number', 0)
-        
-                # Validate guideline number is in the expected range
-                if isinstance(guideline_num, str) and guideline_num.isdigit():
-                    guideline_num = int(guideline_num)
-        
-                # Skip if guideline number is invalid
-                if guideline_num < 1 or guideline_num > 10:
-                    continue
-            
-                status = guideline.get('status', 'unknown').lower()
-                
-                # Handle various status values by mapping them to the expected categories
-                if status not in guideline_stats[guideline_num]:
-                    if "follow" in status and "mostly" in status:
-                        status = "mostly followed"
-                    elif "follow" in status:
-                        status = "followed"
-                    elif "violat" in status:
-                        status = "violated"
-                    else:
-                        status = "unknown"
-                
-                guideline_stats[guideline_num][status] += 1
-                total_checks += 1
-                
-                if status == "violated":
-                    overall_violations += 1
-        
-        # Calculate overall compliance rate
-        overall_compliance = ((total_checks - overall_violations) / total_checks * 100) if total_checks > 0 else 0
-        
-        # Create summary dataframe
-        summary_data = []
-        for guideline_num, stats in guideline_stats.items():
-            total = stats["followed"] + stats["violated"] + stats["unknown"]
-            compliance_rate = (stats["followed"] / (stats["followed"] + stats["violated"]) * 100) if (stats["followed"] + stats["violated"]) > 0 else 0
-            summary_data.append({
-                "Guideline": f"Guideline {guideline_num}",
-                "Followed": stats["followed"],
-                "Violated": stats["violated"],
-                "Unknown": stats["unknown"],
-                "Compliance Rate": f"{compliance_rate:.1f}%"
-            })
-        
-        summary_df = pd.DataFrame(summary_data)
-        
-        # Display summary statistics in cards
-        col1, col2, col3, col4 = st.columns(4)
+        # Display summary statistics in a simplified way
+        col1 = st.columns(1)[0]
         
         with col1:
             st.markdown(f"""
@@ -582,148 +543,18 @@ def main():
                 <div class="stats-label">Files Analyzed</div>
             </div>
             """, unsafe_allow_html=True)
-            
-        with col2:
-            st.markdown(f"""
-            <div class="stats-card">
-                <div class="stats-number">{total_checks}</div>
-                <div class="stats-label">Guideline Checks</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        with col3:
-            st.markdown(f"""
-            <div class="stats-card">
-                <div class="stats-number">{overall_violations}</div>
-                <div class="stats-label">Violations Found</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        with col4:
-            color = "#27ae60" if overall_compliance >= 80 else "#f39c12" if overall_compliance >= 50 else "#e74c3c"
-            st.markdown(f"""
-            <div class="stats-card">
-                <div class="stats-number" style="color: {color}">{overall_compliance:.1f}%</div>
-                <div class="stats-label">Overall Compliance</div>
-            </div>
-            """, unsafe_allow_html=True)
         
-        # Show compliance chart
-        st.subheader("Guidelines Compliance Rate")
-        generate_compliance_chart(summary_data)
+        # Brief usage instructions
+        st.info("👉 Click on any file below to see its detailed analysis including guideline evaluations and suggested improvements.")
         
-        # Show summary dataframe
-        st.subheader("Guidelines Compliance Details")
-        st.dataframe(summary_df, use_container_width=True, hide_index=True)
-        
-        # Tabs for different views
-        tab1, tab2, tab3 = st.tabs(["File-by-File Analysis", "Guideline Overview", "Violations Summary"])
-        
-        with tab1:
-            # Display detailed analysis for each file
-            for file_result in st.session_state.analysis_results:
-                with st.expander(f"📄 {format_file_path(file_result['file_path'])}"):
-                    # Display the full path inside in smaller text
-                    st.caption(f"Full path: {file_result['file_path']}")
-                    
-                    # Display guidelines analysis
-                    for guideline in file_result['analysis'].get('guidelines_analysis', []):
-                        guideline_num = guideline.get('guideline_number', 'N/A')
-                        description = guideline.get('guideline_description', 'N/A')
-                        status = guideline.get('status', 'unknown').lower()
-                        details = guideline.get('details', 'No details provided')
-                        modifications = guideline.get('modifications')
-                        
-                        status_class = status if status in ["followed", "violated", "unknown"] else "unknown"
-                        
-                        st.markdown(f"<div class='guideline-header'>Guideline {guideline_num}: {description}</div>", unsafe_allow_html=True)
-                        st.markdown(f"<span class='{status_class}'>Status: {status.upper()}</span>", unsafe_allow_html=True)
-                        
-                        st.markdown("<div class='details'>", unsafe_allow_html=True)
-                        st.markdown(f"**Details:** {details}")
-                        
-                        if modifications and status == "violated":
-                            st.markdown("<div class='modifications'>", unsafe_allow_html=True)
-                            st.markdown("**Suggested Modifications:**")
-                            st.code(modifications, language="java")
-                            st.markdown("</div>", unsafe_allow_html=True)
-                        
-                        st.markdown("</div>", unsafe_allow_html=True)
-                        st.markdown("---")
-        
-        with tab2:
-            # Display analysis by guideline
-            for guideline_num in range(1, 11):
-                with st.expander(f"Guideline {guideline_num} - Compliance: {guideline_stats[guideline_num]['followed']}/{guideline_stats[guideline_num]['followed'] + guideline_stats[guideline_num]['violated']} files"):
-                    # Find all violations for this guideline
-                    violations = []
-                    
-                    for file_result in st.session_state.analysis_results:
-                        for guideline in file_result['analysis'].get('guidelines_analysis', []):
-                            if guideline.get('guideline_number') == guideline_num and guideline.get('status', '').lower() == 'violated':
-                                violations.append({
-                                    "file": file_result['file_path'],
-                                    "details": guideline.get('details', ''),
-                                    "modifications": guideline.get('modifications', '')
-                                })
-                    
-                    if violations:
-                        st.markdown(f"**Found {len(violations)} violations in {file_count} files**")
-                        
-                        for idx, violation in enumerate(violations):
-                            st.markdown(f"**Violation #{idx+1} in {format_file_path(violation['file'])}**")
-                            st.markdown(violation['details'])
-                            
-                            if violation['modifications']:
-                                st.markdown("**Suggested fix:**")
-                                st.code(violation['modifications'], language="java")
-                            
-                            st.markdown("---")
-                    else:
-                        st.markdown("No violations found for this guideline.")
-        
-        with tab3:
-            # Compile all violations in one place
-            all_violations = []
-            
-            for file_result in st.session_state.analysis_results:
-                file_path = file_result['file_path']
+        # Display formatted analysis for each file - no tabs needed
+        for file_result in st.session_state.analysis_results:
+            with st.expander(f"📄 {format_file_path(file_result['file_path'])}"):
+                # Display the full path inside in smaller text
+                st.caption(f"Full path: {file_result['file_path']}")
                 
-                for guideline in file_result['analysis'].get('guidelines_analysis', []):
-                    if guideline.get('status', '').lower() == 'violated':
-                        all_violations.append({
-                            "file": file_path,
-                            "guideline": guideline.get('guideline_number', 'N/A'),
-                            "description": guideline.get('guideline_description', 'N/A'),
-                            "details": guideline.get('details', ''),
-                            "modifications": guideline.get('modifications', '')
-                        })
-            
-            if all_violations:
-                st.markdown(f"### Found {len(all_violations)} total violations")
-                
-                # Create a dataframe for sorting/filtering
-                violations_df = pd.DataFrame(all_violations)
-                
-                # Add filter
-                guideline_filter = st.multiselect(
-                    "Filter by Guideline", 
-                    options=sorted(violations_df["guideline"].unique()),
-                    default=sorted(violations_df["guideline"].unique())
-                )
-                
-                filtered_violations = violations_df[violations_df["guideline"].isin(guideline_filter)]
-                
-                for _, violation in filtered_violations.iterrows():
-                    with st.expander(f"Guideline {violation['guideline']} Violation in {format_file_path(violation['file'])}"):
-                        st.markdown(f"**{violation['description']}**")
-                        st.markdown(violation['details'])
-                        
-                        if violation['modifications']:
-                            st.markdown("**Suggested Modification:**")
-                            st.code(violation['modifications'], language="java")
-            else:
-                st.success("No violations found in any files!")
+                # Display the formatted analysis directly
+                st.markdown(file_result['analysis_text'])
 
 # Add footer
 def add_footer():
